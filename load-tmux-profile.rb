@@ -5,6 +5,21 @@ require 'optparse'
 
 class TmuxProfileLoader
 
+    def initialize verbosity
+        @verbosity = verbosity
+    end
+
+    def info *args
+        puts *args if @verbosity >= 1
+    end
+    def debug *args
+        puts *args if @verbosity >= 2
+    end
+    def trace *args
+        puts *args if @verbosity >= 3
+    end
+
+
     def session_exists? name
         system "tmux has-session -t #{name} 2> /dev/null"
     end
@@ -147,13 +162,19 @@ def check_deps
     raise "Please install tmux" unless `which tmux` != ""
 end
 
-options = {}
+options = { :verbosity => 1 }
 parser = OptionParser.new do |opts|
 
-  opts.banner = "Usage: #{ File.basename __FILE__ } [-l] PROFILE"
+  opts.banner = "Usage: #{ File.basename __FILE__ } [-l] [-v[v]] [-q] PROFILE"
 
   opts.on("-l", "--list", "List available profiles") do |l|
     options[:list] = l
+  end
+  opts.on("-v", "--verbose", "Print verbose output") do |l|
+    options[:verbosity] += 1
+  end
+  opts.on("-q", "--quiet", "Suppress output") do |l|
+    options[:verbosity] = 0
   end
 
 end
@@ -174,7 +195,7 @@ if __FILE__ == $0
           puts
         }
     elsif ARGV.length > 0
-        TmuxProfileLoader.new.load_profile ARGV.first
+        TmuxProfileLoader.new(options[:verbosity]).load_profile ARGV.first
     else
         puts parser
     end
