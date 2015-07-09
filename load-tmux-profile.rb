@@ -95,6 +95,7 @@ class TmuxProfileLoader
         end
 
         profile = symbolize_yaml_keys profile
+        debug "Profile: #{YAML.dump profile}"
 
         # initialize all sessions
         profile[:sessions].each do |session|
