@@ -28,7 +28,7 @@ class TmuxProfileLoader
     # Runs command in current shell
     def run cmd, args=[]
         cmd = "#{cmd} #{args.join ' '}".strip
-        puts cmd
+        info cmd
         `#{cmd}`
     end
 
@@ -85,7 +85,7 @@ class TmuxProfileLoader
         profile["sessions"].each do |session|
 
             if session_exists? session["name"]
-                puts "Session '#{session["name"]}' already exists. Skipping."
+                info "Session '#{session["name"]}' already exists. Skipping."
                 next
             end
 
@@ -167,7 +167,7 @@ parser = OptionParser.new do |opts|
 
   opts.banner = "Usage: #{ File.basename __FILE__ } [-l] [-v[v]] [-q] PROFILE"
 
-  opts.on("-l", "--list", "List available profiles") do |l|
+  opts.on("-l", "--list", "List available profiles (ignores -q)") do |l|
     options[:list] = l
   end
   opts.on("-v", "--verbose", "Print verbose output") do |l|
