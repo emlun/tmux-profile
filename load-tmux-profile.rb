@@ -86,7 +86,7 @@ class TmuxProfileLoader
     def load_profile profile_name
         run "tmux start-server"
 
-        default_window = { :name => "default" }
+        default_window = {}
 
         begin
             profile = YAML.load_file find_profile(profile_name)
