@@ -22,6 +22,10 @@ class TmuxProfileLoader
         @verbosity = verbosity
     end
 
+    def die *args
+        puts *args
+        exit 1
+    end
     def info *args
         puts *args if @verbosity >= 1
     end
@@ -90,12 +94,12 @@ class TmuxProfileLoader
 
         profile = find_profile(profile_name)
 
-        raise "Profile not found: '#{profile_name}'" if profile.nil?
+        die "Profile not found: '#{profile_name}'" if profile.nil?
 
         begin
             profile = YAML.load_file profile
         rescue
-            raise "Profile '#{profile_name}' is not valid YAML."
+            die "Profile '#{profile_name}' is not valid YAML."
         end
 
         profile = symbolize_yaml_keys profile
