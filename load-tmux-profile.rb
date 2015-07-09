@@ -3,11 +3,7 @@
 require 'yaml'
 require 'optparse'
 
-
-def check_deps
-    raise "Please install tmux" unless `which tmux` != ""
-end
-
+class TmuxProfileLoader
 
 def session_exists? name
     system "tmux has-session -t #{name} 2> /dev/null"
@@ -60,6 +56,7 @@ end
 
 # Loads profile by name
 def load_profile profile_name
+    run "tmux start-server"
 
     default_window = { "name" => "default" }
 
@@ -144,6 +141,11 @@ def load_profile profile_name
 
 end
 
+end
+
+def check_deps
+    raise "Please install tmux" unless `which tmux` != ""
+end
 
 options = {}
 parser = OptionParser.new do |opts|
@@ -172,8 +174,7 @@ if __FILE__ == $0
           puts
         }
     elsif ARGV.length > 0
-		run "tmux start-server"
-        load_profile ARGV.first
+        TmuxProfileLoader.new.load_profile ARGV.first
     else
         puts parser
     end
