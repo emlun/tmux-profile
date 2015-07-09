@@ -88,10 +88,14 @@ class TmuxProfileLoader
 
         default_window = {}
 
+        profile = find_profile(profile_name)
+
+        raise "Profile not found: '#{profile_name}'" if profile.nil?
+
         begin
-            profile = YAML.load_file find_profile(profile_name)
+            profile = YAML.load_file profile
         rescue
-            raise "Profile '#{profile_name}' doesn't exist"
+            raise "Profile '#{profile_name}' is not valid YAML."
         end
 
         profile = symbolize_yaml_keys profile
