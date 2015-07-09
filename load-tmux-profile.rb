@@ -108,7 +108,7 @@ class TmuxProfileLoader
         # initialize all sessions
         profile[:sessions].each do |session|
 
-            if session_exists? session[:name]
+            if !session[:name].nil? and session_exists? session[:name]
                 info "Session '#{session[:name]}' already exists. Skipping."
                 next
             end
@@ -128,25 +128,35 @@ class TmuxProfileLoader
             args << "-x #{w}"
             args << "-y #{h}"
             args << "-d"
-            run "tmux new-session", args
+            args << '-P -F "#{session_id} #{window_id} #{pane_id}"'
+            created_info = run "tmux new-session", args
+            debug "Created '#{created_info}'"
+
+            session[:id], window[:id],  = created_info.strip.split.map { |id| "'#{id}'" }
+            debug "Created session #{session[:id]} with window #{window[:id]}"
 
             # create more windows
             unless session[:windows].nil?
                 session[:windows][1..-1].each do |window|
                     window[:dir] ||= session[:dir]
                     args = []
-                    args << "-t #{session[:name]}"
+                    args << "-t #{session[:id]}"
                     args << "-n #{window[:name]}" unless window[:name].nil?
                     args << "-c #{window[:dir]}" unless window[:dir].nil?
                     args << "-d"
-                    run "tmux new-window", args
+                    args << '-P -F "#{window_id}"'
+                    created_info = run "tmux new-window", args
+
+                    window[:id] = "'#{created_info.strip}'"
+                    debug "Created window #{window[:id]}"
                 end
             end
 
             # initialize windows
             unless session[:windows].nil?
                 session[:windows].each do |window|
-                    n = "#{session[:name]}:#{window[:name]}"
+                    n = "#{session[:id]}:#{window[:id]}"
+                    debug "Initializing window #{n}"
 
                     run_in_pane n, window[:cmd] unless window[:cmd].nil?
                     send_to_pane n, window[:send] unless window[:send].nil?
@@ -173,7 +183,7 @@ class TmuxProfileLoader
         # attach first specified session
         profile[:sessions].each do |session|
             if session[:attach]
-                run "tmux attach", ["-t #{session[:name]}"]
+                run "tmux attach", ["-t #{session[:id]}"]
                 break
             end
         end
