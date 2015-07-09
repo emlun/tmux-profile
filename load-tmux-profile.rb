@@ -42,10 +42,21 @@ def run_in_pane pane, cmds
     end
 end
 
-def profile_dir
-    File.expand_path('./profiles', File.dirname(__FILE__))
+def profile_dirs
+    [
+      './profiles',
+      '~/.config/tmux/profiles',
+    ].map { |filename|
+      File.expand_path(filename, File.dirname(__FILE__))
+    }
 end
 
+def find_profile(profile_name)
+    profile_dir = profile_dirs.find { |dir_name|
+      File.exist? "#{dir_name}/#{profile_name}.yaml"
+    }
+    "#{profile_dir}/#{profile_name}.yaml" unless profile_dir.nil?
+end
 
 # Loads profile by name
 def load_profile profile_name
@@ -53,7 +64,7 @@ def load_profile profile_name
     default_window = { "name" => "default" }
 
     begin
-        profile = YAML.load_file "#{profile_dir}/#{profile_name}.yaml"
+        profile = YAML.load_file find_profile(profile_name)
     rescue
         raise "Profile '#{profile_name}' doesn't exist"
     end
@@ -152,10 +163,14 @@ if __FILE__ == $0
     parser.parse! ARGV
 
     if options[:list]
-        puts Dir.new(profile_dir)
-                .select { |f| f =~ /\.yaml$/ }
-                .map { |f| f.sub ".yaml", "" }
-                .join "\n"
+        profile_dirs.each { |dir|
+          puts "#{dir}:"
+          puts Dir.new(dir)
+                  .select { |f| f =~ /\.yaml$/ }
+                  .map { |f| f.sub ".yaml", "" }
+                  .join "\n"
+          puts
+        }
     elsif ARGV.length > 0
 		run "tmux start-server"
         load_profile ARGV.first
