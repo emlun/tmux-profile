@@ -3,6 +3,19 @@
 require 'yaml'
 require 'optparse'
 
+def symbolize_yaml_keys hash
+    if hash.is_a? Hash
+        hash.inject({}) { |memo, (key, value)|
+            memo[if key.is_a? String then key.to_sym else key end] = symbolize_yaml_keys value
+            memo
+        }
+    elsif hash.is_a? Array
+        hash.map { |item| symbolize_yaml_keys item }
+    else
+        hash
+    end
+end
+
 class TmuxProfileLoader
 
     def initialize verbosity
