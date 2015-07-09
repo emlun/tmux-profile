@@ -114,67 +114,73 @@ class TmuxProfileLoader
 
         # initialize all sessions
         profile[:sessions].each do |session|
-
-            if !session[:name].nil? and session_exists? session[:name]
-                info "Session '#{session[:name]}' already exists. Skipping."
-                next
-            end
-
-            window = unless session[:windows].nil? then session[:windows].first else default_window end
-
-            # create session
-            window[:dir] ||= session[:dir]
-            args = []
-            args << "-s #{session[:name]}" unless session[:name].nil?
-            args << "-n #{window[:name]}" unless window[:name].nil?
-            args << "-c #{window[:dir]}" unless window[:dir].nil?
-            args << background
-            args << '-P -F "#{session_id} #{window_id} #{pane_id}"'
-            created_info = run "tmux new-session", args
-            debug "Created '#{created_info}'"
-
-            session[:id], window[:id],  = created_info.strip.split.map { |id| "'#{id}'" }
-            debug "Created session #{session[:id]} with window #{window[:id]}"
-
-            # create more windows
-            unless session[:windows].nil?
-                session[:windows][1..-1].each do |window|
-                    window[:dir] ||= session[:dir]
-                    args = []
-                    args << "-t #{session[:id]}"
-                    args << "-n #{window[:name]}" unless window[:name].nil?
-                    args << "-c #{window[:dir]}" unless window[:dir].nil?
-                    args << "-d"
-                    args << '-P -F "#{window_id}"'
-                    created_info = run "tmux new-window", args
-
-                    window[:id] = "'#{created_info.strip}'"
-                    debug "Created window #{window[:id]}"
+            if session.nil?
+                created_info = run "tmux new-session #{background} -P -F '\#{session_id}'"
+                debug "Created empty session #{created_info.strip}"
+            else
+                if !session[:name].nil? and session_exists? session[:name]
+                    info "Session '#{session[:name]}' already exists. Skipping."
+                    next
                 end
-            end
 
-            # initialize windows
-            unless session[:windows].nil?
-                session[:windows].each do |window|
-                    n = "#{session[:id]}:#{window[:id]}"
-                    debug "Initializing window #{n}"
+                debug "Creating session #{YAML.dump session}"
 
-                    run_in_pane n, window[:cmd] unless window[:cmd].nil?
-                    send_to_pane n, window[:send] unless window[:send].nil?
+                window = unless session[:windows].nil? then session[:windows].first else default_window end
 
-                    panes = window[:panes] || []
-                    panes.each do |pane|
-                        pane[:dir] ||= window[:dir]
+                # create session
+                window[:dir] ||= session[:dir]
+                args = []
+                args << "-s #{session[:name]}" unless session[:name].nil?
+                args << "-n #{window[:name]}" unless window[:name].nil?
+                args << "-c #{window[:dir]}" unless window[:dir].nil?
+                args << background
+                args << '-P -F "#{session_id} #{window_id} #{pane_id}"'
+                created_info = run "tmux new-session", args
+                debug "Created '#{created_info}'"
+
+                session[:id], window[:id],  = created_info.strip.split.map { |id| "'#{id}'" }
+                debug "Created session #{session[:id]} with window #{window[:id]}"
+
+                # create more windows
+                unless session[:windows].nil?
+                    session[:windows][1..-1].each do |window|
+                        window[:dir] ||= session[:dir]
                         args = []
-                        args << "-t #{n}"
-                        args << "-c #{pane[:dir]}" unless pane[:dir].nil?
-                        args << "-#{ pane[:split][0] || "h" } "
-                        args << "-l #{pane[:size]} " unless pane[:size].nil?
-                        run "tmux split-window", args
-                        cmds = pane[:cmd]
-                        run_in_pane n, cmds unless cmds.nil?
-                        send = pane[:send]
-                        send_to_pane n, send unless send.nil?
+                        args << "-t #{session[:id]}"
+                        args << "-n #{window[:name]}" unless window[:name].nil?
+                        args << "-c #{window[:dir]}" unless window[:dir].nil?
+                        args << "-d"
+                        args << '-P -F "#{window_id}"'
+                        created_info = run "tmux new-window", args
+
+                        window[:id] = "'#{created_info.strip}'"
+                        debug "Created window #{window[:id]}"
+                    end
+                end
+
+                # initialize windows
+                unless session[:windows].nil?
+                    session[:windows].each do |window|
+                        n = "#{session[:id]}:#{window[:id]}"
+                        debug "Initializing window #{n}"
+
+                        run_in_pane n, window[:cmd] unless window[:cmd].nil?
+                        send_to_pane n, window[:send] unless window[:send].nil?
+
+                        panes = window[:panes] || []
+                        panes.each do |pane|
+                            pane[:dir] ||= window[:dir]
+                            args = []
+                            args << "-t #{n}"
+                            args << "-c #{pane[:dir]}" unless pane[:dir].nil?
+                            args << "-#{ pane[:split][0] || "h" } "
+                            args << "-l #{pane[:size]} " unless pane[:size].nil?
+                            run "tmux split-window", args
+                            cmds = pane[:cmd]
+                            run_in_pane n, cmds unless cmds.nil?
+                            send = pane[:send]
+                            send_to_pane n, send unless send.nil?
+                        end
                     end
                 end
             end
