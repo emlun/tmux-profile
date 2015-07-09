@@ -86,6 +86,13 @@ class TmuxProfileLoader
         "#{profile_dir}/#{profile_name}.yaml" unless profile_dir.nil?
     end
 
+    def background
+        # get current terminal height/width
+        w = `tput cols`.strip
+        h = `tput lines`.strip
+        "-d -x #{w} -y #{h}"
+    end
+
     # Loads profile by name
     def load_profile profile_name
         run "tmux start-server"
@@ -115,19 +122,13 @@ class TmuxProfileLoader
 
             window = unless session[:windows].nil? then session[:windows].first else default_window end
 
-            # get current terminal height/width
-            w = `tput cols`.strip
-            h = `tput lines`.strip
-
             # create session
             window[:dir] ||= session[:dir]
             args = []
             args << "-s #{session[:name]}" unless session[:name].nil?
             args << "-n #{window[:name]}" unless window[:name].nil?
             args << "-c #{window[:dir]}" unless window[:dir].nil?
-            args << "-x #{w}"
-            args << "-y #{h}"
-            args << "-d"
+            args << background
             args << '-P -F "#{session_id} #{window_id} #{pane_id}"'
             created_info = run "tmux new-session", args
             debug "Created '#{created_info}'"
