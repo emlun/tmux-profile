@@ -86,7 +86,7 @@ class TmuxProfileLoader
     def load_profile profile_name
         run "tmux start-server"
 
-        default_window = { "name" => "default" }
+        default_window = { :name => "default" }
 
         begin
             profile = YAML.load_file find_profile(profile_name)
@@ -94,64 +94,66 @@ class TmuxProfileLoader
             raise "Profile '#{profile_name}' doesn't exist"
         end
 
-        # initialize all sessions
-        profile["sessions"].each do |session|
+        profile = symbolize_yaml_keys profile
 
-            if session_exists? session["name"]
-                info "Session '#{session["name"]}' already exists. Skipping."
+        # initialize all sessions
+        profile[:sessions].each do |session|
+
+            if session_exists? session[:name]
+                info "Session '#{session[:name]}' already exists. Skipping."
                 next
             end
 
-            window = unless session["windows"].nil? then session["windows"].first else default_window end
+            window = unless session[:windows].nil? then session[:windows].first else default_window end
 
             # get current terminal height/width
             w = `tput cols`.strip
             h = `tput lines`.strip
 
             # create session
-            window["dir"] ||= session["dir"]
+            window[:dir] ||= session[:dir]
             args = []
-            args << "-s #{session["name"]}" unless session["name"].nil?
-            args << "-n #{window["name"]}" unless window["name"].nil?
-            args << "-c #{window["dir"]}" unless window["dir"].nil?
+            args << "-s #{session[:name]}" unless session[:name].nil?
+            args << "-n #{window[:name]}" unless window[:name].nil?
+            args << "-c #{window[:dir]}" unless window[:dir].nil?
             args << "-x #{w}"
             args << "-y #{h}"
             args << "-d"
             run "tmux new-session", args
 
             # create more windows
-            unless session["windows"].nil?
-                session["windows"][1..-1].each do |window|
-                    window["dir"] ||= session["dir"]
+            unless session[:windows].nil?
+                session[:windows][1..-1].each do |window|
+                    window[:dir] ||= session[:dir]
                     args = []
-                    args << "-t #{session["name"]}"
-                    args << "-n #{window["name"]}" unless window["name"].nil?
-                    args << "-c #{window["dir"]}" unless window["dir"].nil?
+                    args << "-t #{session[:name]}"
+                    args << "-n #{window[:name]}" unless window[:name].nil?
+                    args << "-c #{window[:dir]}" unless window[:dir].nil?
                     args << "-d"
                     run "tmux new-window", args
                 end
             end
 
             # initialize windows
-            unless session["windows"].nil?
-                session["windows"].each do |window|
-                    n = "#{session["name"]}:#{window["name"]}"
+            unless session[:windows].nil?
+                session[:windows].each do |window|
+                    n = "#{session[:name]}:#{window[:name]}"
 
-                    run_in_pane n, window["cmd"] unless window["cmd"].nil?
-                    send_to_pane n, window["send"] unless window["send"].nil?
+                    run_in_pane n, window[:cmd] unless window[:cmd].nil?
+                    send_to_pane n, window[:send] unless window[:send].nil?
 
-                    panes = window["panes"] || []
+                    panes = window[:panes] || []
                     panes.each do |pane|
-                        pane["dir"] ||= window["dir"]
+                        pane[:dir] ||= window[:dir]
                         args = []
                         args << "-t #{n}"
-                        args << "-c #{pane["dir"]}" unless pane["dir"].nil?
-                        args << "-#{ pane["split"][0] || "h" } "
-                        args << "-l #{pane["size"]} " unless pane["size"].nil?
+                        args << "-c #{pane[:dir]}" unless pane[:dir].nil?
+                        args << "-#{ pane[:split][0] || "h" } "
+                        args << "-l #{pane[:size]} " unless pane[:size].nil?
                         run "tmux split-window", args
-                        cmds = pane["cmd"]
+                        cmds = pane[:cmd]
                         run_in_pane n, cmds unless cmds.nil?
-                        send = pane["send"]
+                        send = pane[:send]
                         send_to_pane n, send unless send.nil?
                     end
                 end
@@ -160,9 +162,9 @@ class TmuxProfileLoader
         end
 
         # attach first specified session
-        profile["sessions"].each do |session|
-            if session["attach"]
-                run "tmux attach", ["-t #{session["name"]}"]
+        profile[:sessions].each do |session|
+            if session[:attach]
+                run "tmux attach", ["-t #{session[:name]}"]
                 break
             end
         end
