@@ -97,8 +97,6 @@ class TmuxProfileLoader
     def load_profile profile_name
         run "tmux start-server"
 
-        default_window = {}
-
         profile = find_profile(profile_name)
 
         die "Profile not found: '#{profile_name}'" if profile.nil?
@@ -125,42 +123,50 @@ class TmuxProfileLoader
 
                 debug "Creating session #{YAML.dump session}"
 
-                window = unless session[:windows].nil? then session[:windows].first else default_window end
-
-                # create session
-                window[:dir] ||= session[:dir]
                 args = []
                 args << "-s #{session[:name]}" unless session[:name].nil?
-                args << "-n #{window[:name]}" unless window[:name].nil?
-                args << "-c #{window[:dir]}" unless window[:dir].nil?
                 args << background
                 args << '-P -F "#{session_id} #{window_id} #{pane_id}"'
-                created_info = run "tmux new-session", args
-                debug "Created '#{created_info}'"
 
-                session[:id], window[:id],  = created_info.strip.split.map { |id| "'#{id}'" }
-                debug "Created session #{session[:id]} with window #{window[:id]}"
+                unless session[:window].nil?
+                    window = session[:windows].first
+                    window[:dir] ||= session[:dir] unless session[:dir].nil?
+                    args << "-n #{window[:name]}" unless window[:name].nil?
+                    args << "-c #{window[:dir]}" unless window[:dir].nil?
+                end
+
+                created_info = run "tmux new-session", args
+
+                session[:id], window_id = created_info.strip.split.map { |id| "'#{id}'" }
+                window[:id] = window_id unless window.nil?
+
+                debug "Created session #{session[:id]} with window #{window_id}"
 
                 # create more windows
                 unless session[:windows].nil?
                     session[:windows][1..-1].each do |window|
-                        window[:dir] ||= session[:dir]
                         args = []
                         args << "-t #{session[:id]}"
-                        args << "-n #{window[:name]}" unless window[:name].nil?
-                        args << "-c #{window[:dir]}" unless window[:dir].nil?
                         args << "-d"
                         args << '-P -F "#{window_id}"'
-                        created_info = run "tmux new-window", args
 
-                        window[:id] = "'#{created_info.strip}'"
-                        debug "Created window #{window[:id]}"
+                        unless window.nil?
+                            window[:dir] ||= session[:dir]
+                            args << "-n #{window[:name]}" unless window[:name].nil?
+                            args << "-c #{window[:dir]}" unless window[:dir].nil?
+                        end
+
+                        created_info = run "tmux new-window", args
+                        window_id = "'#{created_info.strip}'"
+                        window[:id] = window_id unless window.nil?
+
+                        debug "Created window #{window_id}"
                     end
                 end
 
                 # initialize windows
                 unless session[:windows].nil?
-                    session[:windows].each do |window|
+                    session[:windows].select { |window| !window.nil? }.each do |window|
                         n = "#{session[:id]}:#{window[:id]}"
                         debug "Initializing window #{n}"
 
@@ -169,17 +175,32 @@ class TmuxProfileLoader
 
                         panes = window[:panes] || []
                         panes.each do |pane|
-                            pane[:dir] ||= window[:dir]
+                            debug "Creating pane #{YAML.dump pane}"
+
                             args = []
                             args << "-t #{n}"
-                            args << "-c #{pane[:dir]}" unless pane[:dir].nil?
-                            args << "-#{ pane[:split][0] || "h" } "
-                            args << "-l #{pane[:size]} " unless pane[:size].nil?
-                            run "tmux split-window", args
-                            cmds = pane[:cmd]
-                            run_in_pane n, cmds unless cmds.nil?
-                            send = pane[:send]
-                            send_to_pane n, send unless send.nil?
+                            args << '-P -F "#{pane_id}"'
+
+                            unless pane.nil?
+                                pane[:dir] ||= window[:dir]
+                                args << "-c #{pane[:dir]}" unless pane[:dir].nil?
+                                args << "-#{ pane[:split][0] || "h" } "
+                                args << "-l #{pane[:size]} " unless pane[:size].nil?
+                            end
+
+                            created_info = run "tmux split-window", args
+                            pane_id = created_info.strip
+
+                            debug "Created pane #{pane_id}"
+
+                            unless pane.nil? or pane[:cmd].nil?
+                                cmds = pane[:cmd]
+                                run_in_pane n, cmds unless cmds.nil?
+                            end
+                            unless pane.nil? or pane[:send].nil?
+                                send = pane[:send]
+                                send_to_pane n, send unless send.nil?
+                            end
                         end
                     end
                 end
