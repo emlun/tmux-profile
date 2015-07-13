@@ -18,8 +18,8 @@ end
 
 class TmuxProfileLoader
 
-    def initialize verbosity
-        @verbosity = verbosity
+    def initialize options
+        @verbosity = options[:verbosity]
     end
 
     def die *args
@@ -76,6 +76,17 @@ class TmuxProfileLoader
           '~/.config/tmux/profiles',
         ].map { |filename|
           File.expand_path(filename, File.dirname(__FILE__))
+        }
+    end
+
+    def list_profiles
+        profile_dirs.select { |dir_path|
+          Dir.exist? dir_path
+        }.inject({}) { |result,dir_path|
+          result[dir_path] = Dir.new(dir_path)
+                          .select { |f| f =~ /\.yaml$/ }
+                          .map { |f| f.sub ".yaml", "" }
+          result
         }
     end
 
@@ -248,16 +259,12 @@ if __FILE__ == $0
     parser.parse! ARGV
 
     if options[:list]
-        profile_dirs.each { |dir|
-          puts "#{dir}:"
-          puts Dir.new(dir)
-                  .select { |f| f =~ /\.yaml$/ }
-                  .map { |f| f.sub ".yaml", "" }
-                  .join "\n"
-          puts
+        TmuxProfileLoader.new(options).list_profiles.each { |profiledir,profiles|
+            puts "\n#{profiledir}:\n"
+            profiles.each { |profile| puts profile }
         }
     elsif ARGV.length > 0
-        TmuxProfileLoader.new(options[:verbosity]).load_profile ARGV.first
+        TmuxProfileLoader.new(options).load_profile ARGV.first
     else
         puts parser
     end
