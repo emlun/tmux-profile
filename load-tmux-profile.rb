@@ -225,7 +225,7 @@ class TmuxProfileLoader
         # attach first specified session
         profile[:sessions].each do |session|
             if session[:attach]
-                run "tmux attach", ["-t #{session[:id]}"]
+                run "tmux attach", ["-t #{session[:id] or session[:name]}"]
                 break
             end
         end
