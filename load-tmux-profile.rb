@@ -139,7 +139,10 @@ class TmuxProfileLoader
                 args << background
                 args << '-P -F "#{session_id} #{window_id} #{pane_id}"'
 
-                unless session[:window].nil?
+                if session[:window].nil?
+                    args << "-c #{session[:dir]}" unless session[:dir].nil?
+                    args << "'#{session[:cmd]}'" unless session[:cmd].nil?
+                else
                     window = session[:windows].first
                     window[:dir] ||= session[:dir] unless session[:dir].nil?
                     args << "-n #{window[:name]}" unless window[:name].nil?
