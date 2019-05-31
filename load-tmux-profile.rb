@@ -179,7 +179,13 @@ class TmuxProfileLoader
                 end
 
                 # initialize windows
-                unless session[:windows].nil?
+                if session[:windows].nil?
+                    n = "#{session[:id]}:0"
+                    debug "Initializing window #{n}"
+
+                    run_in_pane n, session[:cmd] unless session[:cmd].nil?
+                    send_to_pane n, session[:send] unless session[:send].nil?
+                else
                     session[:windows].select { |window| !window.nil? }.each do |window|
                         n = "#{session[:id]}:#{window[:id]}"
                         debug "Initializing window #{n}"
